@@ -14,6 +14,9 @@ const ctx = canvas.getContext('2d');
 const handles = document.getElementById('handles');
 const hctx = handles.getContext('2d');
 const commentInput = document.getElementById('commentInput');
+const miniCanvas = document.getElementById('miniCanvas');
+const miniCtx = miniCanvas.getContext('2d');
+const miniPreview = document.getElementById('miniPreview');
 
 const state = {
   avatarImg: null,
@@ -55,7 +58,9 @@ const state = {
   usernameColor: '#ffffff',
   accentColor: '#3897f0',
   fontFamily: "'Helvetica Neue', Arial, sans-serif",
-  fontSize: 30
+  fontSize: 30,
+  textStyle: { bold: false, italic: false },
+  stroke: { enabled: false, color: '#000000', width: 4 }
 };
 
 /* cached bounds of the last-drawn card, in stage coordinates — used for hit testing */
@@ -282,6 +287,12 @@ bindText('fontSize', 'fontSize', v => {
   return n;
 });
 
+bindCheckbox('globalBold', 'bold', 'textStyle');
+bindCheckbox('globalItalic', 'italic', 'textStyle');
+bindCheckbox('strokeToggle', 'enabled', 'stroke');
+bindColor('strokeColor', 'color', 'stroke');
+bindRange('strokeWidth', 'width', { path: 'stroke' });
+
 /* Card fill swatches */
 document.querySelectorAll('.swatch').forEach(sw => {
   sw.addEventListener('click', () => {
@@ -320,7 +331,7 @@ function wrapRuns(runs, maxWidth, baseSize, fontFamily) {
   const lines = [[]];
   let curWidth = 0;
   const fontFor = (bold, italic) =>
-    `${italic ? 'italic ' : ''}${bold ? '700' : '400'} ${baseSize}px ${fontFamily}`;
+    `${(italic || state.textStyle.italic) ? 'italic ' : ''}${(bold || state.textStyle.bold) ? '700' : '400'} ${baseSize}px ${fontFamily}`;
 
   runs.forEach(run => {
     const segments = run.text.split('\n');
@@ -348,9 +359,11 @@ function drawWrappedLines(lines, x, y, lineHeight, fontSize, fontFamily, default
     let cx = x;
     const ly = y + i * lineHeight;
     line.forEach(tok => {
-      ctx.font = `${tok.italic ? 'italic ' : ''}${tok.bold ? '700' : '400'} ${fontSize}px ${fontFamily}`;
+      const bold = tok.bold || state.textStyle.bold;
+      const italic = tok.italic || state.textStyle.italic;
+      ctx.font = `${italic ? 'italic ' : ''}${bold ? '700' : '400'} ${fontSize}px ${fontFamily}`;
       ctx.fillStyle = tok.color || defaultColor;
-      ctx.fillText(tok.text, cx, ly);
+      paintText(tok.text, cx, ly);
       cx += tok.width;
     });
   });
@@ -360,6 +373,18 @@ function formatLikes(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
   if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return String(n);
+}
+
+/* Draws stroke (if enabled) then fill, for one piece of text at the current font/baseline/align. */
+function paintText(text, x, y) {
+  if (state.stroke.enabled) {
+    ctx.lineJoin = 'round';
+    ctx.miterLimit = 2;
+    ctx.strokeStyle = state.stroke.color;
+    ctx.lineWidth = state.stroke.width * state.scale;
+    ctx.strokeText(text, x, y);
+  }
+  ctx.fillText(text, x, y);
 }
 
 /* ---------- Main render ---------- */
@@ -452,10 +477,10 @@ function render() {
 
   // ----- Username row -----
   const textX = cardX + pad + avatarR * 2 + gapH;
-  ctx.font = `700 ${usernameSize}px ${state.fontFamily}`;
+  ctx.font = `${state.textStyle.italic ? 'italic ' : ''}700 ${usernameSize}px ${state.fontFamily}`;
   ctx.fillStyle = state.usernameColor;
   ctx.textBaseline = 'middle';
-  ctx.fillText(state.username, textX, avY);
+  paintText(state.username, textX, avY);
   const usernameW = ctx.measureText(state.username).width;
 
   if (state.verified) {
@@ -483,13 +508,13 @@ function render() {
 
   // ----- Meta row -----
   ctx.textBaseline = 'top';
-  ctx.font = `500 ${metaSize}px ${state.fontFamily}`;
+  ctx.font = `${state.textStyle.italic ? 'italic ' : ''}${state.textStyle.bold ? '700' : '500'} ${metaSize}px ${state.fontFamily}`;
   ctx.fillStyle = state.metaColor;
   let metaX = textX;
   const metaParts = [state.timestamp, `${formatLikes(state.likes)} likes`];
   if (state.showReply) metaParts.push('Reply');
   metaParts.forEach(part => {
-    ctx.fillText(part, metaX, metaY);
+    paintText(part, metaX, metaY);
     metaX += ctx.measureText(part).width + 28 * s;
   });
 
@@ -500,6 +525,25 @@ function render() {
   }
 
   drawHandles();
+  updateMiniPreview();
+}
+
+/* ---------- Mini preview (content only, no drag handles) ---------- */
+function updateMiniPreview() {
+  miniCtx.clearRect(0, 0, miniCanvas.width, miniCanvas.height);
+  miniCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, miniCanvas.width, miniCanvas.height);
+}
+
+miniPreview.addEventListener('click', () => {
+  document.getElementById('monitorFrame').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+if ('IntersectionObserver' in window) {
+  const previewObserver = new IntersectionObserver(
+    entries => entries.forEach(entry => miniPreview.classList.toggle('visible', !entry.isIntersecting)),
+    { threshold: 0 }
+  );
+  previewObserver.observe(document.getElementById('monitorFrame'));
 }
 
 /* ---------- Selection / drag / resize overlay ---------- */
