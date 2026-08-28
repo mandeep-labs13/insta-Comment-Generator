@@ -20,6 +20,11 @@
   </div>
 </header>
 
+<!-- Small floating preview — appears only once the main preview is scrolled out of view -->
+<div class="mini-preview" id="miniPreview" title="Back to preview">
+  <canvas id="miniCanvas" width="180" height="225"></canvas>
+</div>
+
 <main class="workspace">
 
   <!-- LIVE MONITOR / PREVIEW -->
@@ -297,6 +302,30 @@
           <div>
             <label for="accentColor">Accent / badge color</label>
             <input type="color" id="accentColor" value="#3897f0">
+          </div>
+        </div>
+        <div class="field field-row-2">
+          <label class="checkbox">
+            <input type="checkbox" id="globalBold">
+            Bold all text
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" id="globalItalic">
+            Italic all text
+          </label>
+        </div>
+        <label class="checkbox">
+          <input type="checkbox" id="strokeToggle">
+          Text stroke (outline)
+        </label>
+        <div class="field field-row-2">
+          <div>
+            <label for="strokeColor">Stroke color</label>
+            <input type="color" id="strokeColor" value="#000000">
+          </div>
+          <div>
+            <label for="strokeWidth">Stroke width</label>
+            <input type="range" id="strokeWidth" min="1" max="16" value="4">
           </div>
         </div>
       </details>
