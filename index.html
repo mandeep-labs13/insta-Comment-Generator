@@ -21,7 +21,7 @@
   <!-- LIVE MONITOR / PREVIEW -->
   <section class="monitor-bay">
     <div class="monitor-label">
-      <span class="dot"></span> LIVE PREVIEW
+      <span class="dot"></span> LIVE PREVIEW · transparent export
     </div>
     <div class="monitor-frame" id="monitorFrame">
       <canvas id="canvas" width="1080" height="640"></canvas>
@@ -67,25 +67,13 @@
       <h2 class="panel-title">02 — Comment</h2>
 
       <div class="rte-toolbar">
-        <button type="button" class="rte-btn" data-cmd="bold"><b>B</b></button>
-        <button type="button" class="rte-btn" data-cmd="italic"><i>I</i></button>
+        <button type="button" class="rte-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+        <button type="button" class="rte-btn" data-cmd="italic" title="Italic"><i>I</i></button>
         <input type="color" id="rteColor" class="rte-color" value="#1c1c1c" title="Text color">
-        <button type="button" class="rte-btn" id="rteClear">Clear style</button>
+        <button type="button" class="rte-btn" id="rteClear" title="Clear formatting">Clear style</button>
       </div>
       <div id="commentInput" class="rte-input" contenteditable="true" data-placeholder="Type your comment…">Read this twice before you judge her.</div>
       <span class="counter"><span id="commentCount">0</span>/150</span>
-
-      <div class="field">
-        <label for="iconSelect">Leading icon</label>
-        <select id="iconSelect">
-          <option value="none">None</option>
-          <option value="megaphone" selected>🗣️ Megaphone</option>
-          <option value="fire">🔥 Fire</option>
-          <option value="heart">❤️ Heart</option>
-          <option value="star">⭐ Star</option>
-          <option value="eyes">👀 Eyes</option>
-        </select>
-      </div>
     </div>
 
     <div class="panel">
@@ -115,50 +103,49 @@
     </div>
 
     <div class="panel">
-      <h2 class="panel-title">04 — Background &amp; Chroma Key</h2>
+      <h2 class="panel-title">04 — Card Fill</h2>
+      <p class="panel-hint">The canvas itself is always transparent. This fill is only the comment card behind the text.</p>
       <div class="swatch-row">
-        <button class="swatch swatch-transparent" data-bg="transparent" title="Transparent (export)"></button>
-        <button class="swatch" style="background:#00FF00" data-bg="#00FF00" title="Chroma Green"></button>
-        <button class="swatch" style="background:#0047FF" data-bg="#0047FF" title="Chroma Blue"></button>
-        <button class="swatch" style="background:#0d0d0d" data-bg="#0d0d0d" title="Studio Black"></button>
-        <button class="swatch" style="background:#ffffff" data-bg="#ffffff" title="White"></button>
+        <button class="swatch swatch-transparent" data-fill="transparent" title="Transparent fill"></button>
+        <button class="swatch" style="background:#00FF00" data-fill="#00FF00" title="Chroma Green"></button>
+        <button class="swatch" style="background:#0047FF" data-fill="#0047FF" title="Chroma Blue"></button>
+        <button class="swatch" style="background:#0d0d0d" data-fill="#0d0d0d" title="Studio Black"></button>
+        <button class="swatch" style="background:#ffffff" data-fill="#ffffff" title="White"></button>
       </div>
       <div class="field field-row-2">
         <div>
-          <label for="bgColor">Custom color</label>
-          <input type="color" id="bgColor" value="#0d0d0d">
+          <label for="cardColor">Custom fill color</label>
+          <input type="color" id="cardColor" value="#000000">
         </div>
         <div>
-          <label class="checkbox">
-            <input type="checkbox" id="gradientToggle">
-            Gradient
-          </label>
+          <label for="cardOpacity">Fill opacity</label>
+          <input type="range" id="cardOpacity" min="0" max="100" value="100">
         </div>
       </div>
-      <div class="field field-row-2" id="gradientRow" style="display:none">
+      <div class="field">
+        <label class="checkbox">
+          <input type="checkbox" id="cardGradientToggle">
+          Gradient fill
+        </label>
+      </div>
+      <div class="field field-row-2" id="cardGradientRow" style="display:none">
         <div>
-          <label for="bgColor2">Gradient color 2</label>
-          <input type="color" id="bgColor2" value="#7a2ff0">
+          <label for="cardColor2">Gradient color 2</label>
+          <input type="color" id="cardColor2" value="#7a2ff0">
         </div>
         <div>
-          <label for="gradientAngle">Angle</label>
-          <input type="range" id="gradientAngle" min="0" max="360" value="45">
+          <label for="cardGradientAngle">Angle</label>
+          <input type="range" id="cardGradientAngle" min="0" max="360" value="45">
         </div>
+      </div>
+      <div class="field">
+        <label for="cornerRadius">Round Corners</label>
+        <input type="range" id="cornerRadius" min="0" max="60" value="28">
       </div>
     </div>
 
     <div class="panel">
-      <h2 class="panel-title">05 — Card Style</h2>
-      <div class="field field-row-2">
-        <div>
-          <label for="cardColor">Card fill</label>
-          <input type="color" id="cardColor" value="#000000">
-        </div>
-        <div>
-          <label for="cardOpacity">Card opacity</label>
-          <input type="range" id="cardOpacity" min="0" max="100" value="100">
-        </div>
-      </div>
+      <h2 class="panel-title">05 — Text &amp; Colors</h2>
       <div class="field field-row-2">
         <div>
           <label for="textColor">Text color</label>
@@ -181,10 +168,6 @@
       </div>
       <div class="field field-row-2">
         <div>
-          <label for="cornerRadius">Corner radius</label>
-          <input type="range" id="cornerRadius" min="0" max="60" value="28">
-        </div>
-        <div>
           <label for="fontFamily">Font</label>
           <select id="fontFamily">
             <option value="'Helvetica Neue', Arial, sans-serif" selected>System Sans</option>
@@ -193,10 +176,10 @@
             <option value="'Comic Sans MS', cursive">Casual</option>
           </select>
         </div>
-      </div>
-      <div class="field">
-        <label for="fontSize">Comment font size: <span id="fontSizeVal">30</span>px</label>
-        <input type="range" id="fontSize" min="18" max="48" value="30">
+        <div>
+          <label for="fontSize">Comment size: <span id="fontSizeVal">30</span>px</label>
+          <input type="range" id="fontSize" min="18" max="48" value="30">
+        </div>
       </div>
     </div>
 
@@ -207,5 +190,4 @@
 
 <script src="app.js"></script>
 </body>
-  </html>
-  
+</html>
