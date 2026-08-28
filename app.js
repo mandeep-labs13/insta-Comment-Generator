@@ -1,19 +1,13 @@
 /* ===========================================================
    Comment Bay — Instagram comment sticker renderer
    Pure canvas rendering, no dependencies.
+   Canvas background is always transparent; the "card" behind
+   the comment is a separate, styleable fill layer.
 =========================================================== */
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-
-const ICONS = {
-  none: '',
-  megaphone: '🗣️',
-  fire: '🔥',
-  heart: '❤️',
-  star: '⭐',
-  eyes: '👀'
-};
+const commentInput = document.getElementById('commentInput');
 
 const state = {
   avatarImg: null,
@@ -21,22 +15,22 @@ const state = {
   username: 'builtbyherself.co',
   verified: false,
   commentRuns: [],           // [{text, bold, italic, color}]
-  icon: 'megaphone',
   likes: 500,
   timestamp: '2h',
   showReply: true,
   authorHeart: false,
-  bg: '#0d0d0d',
-  gradient: false,
-  bg2: '#7a2ff0',
-  gradientAngle: 45,
+
   cardColor: '#000000',
   cardOpacity: 100,
+  cardGradient: false,
+  cardColor2: '#7a2ff0',
+  cardGradientAngle: 45,
+  cornerRadius: 28,
+
   textColor: '#ffffff',
   metaColor: '#9a9a9a',
   usernameColor: '#ffffff',
   accentColor: '#3897f0',
-  cornerRadius: 28,
   fontFamily: "'Helvetica Neue', Arial, sans-serif",
   fontSize: 30
 };
@@ -74,32 +68,70 @@ function extractRuns(node, inherited) {
 }
 
 function readComment() {
-  const el = document.getElementById('commentInput');
-  state.commentRuns = extractRuns(el, { bold: false, italic: false, color: null });
+  state.commentRuns = extractRuns(commentInput, { bold: false, italic: false, color: null });
 }
 
-/* ---------- Rich-text toolbar (execCommand keeps this simple & robust) ---------- */
+/* ---------- Rich-text toolbar ----------
+   Selection inside a contenteditable is lost the instant focus moves to a
+   button, which is why "bold" used to only work if text was pre-selected
+   (the caret position needed for "start bolding from here" was thrown away).
+   We track the last known selection inside the editor and restore it right
+   before running any command, so it works for both an actual selection and
+   a plain collapsed caret (i.e. "type in bold from here on"). */
+let savedRange = null;
+
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if (sel.rangeCount && commentInput.contains(sel.anchorNode)) {
+    savedRange = sel.getRangeAt(0).cloneRange();
+    updateToolbarActiveState();
+  }
+});
+
+function restoreSelection() {
+  commentInput.focus();
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  if (savedRange) {
+    sel.addRange(savedRange);
+  } else {
+    // no prior caret at all — place one at the end of the content
+    const r = document.createRange();
+    r.selectNodeContents(commentInput);
+    r.collapse(false);
+    sel.addRange(r);
+  }
+}
+
+function runCommand(cmd, value) {
+  restoreSelection();
+  document.execCommand(cmd, false, value || null);
+  const sel = window.getSelection();
+  if (sel.rangeCount) savedRange = sel.getRangeAt(0).cloneRange();
+  updateToolbarActiveState();
+  scheduleRender();
+}
+
+function updateToolbarActiveState() {
+  try {
+    document.querySelector('.rte-btn[data-cmd="bold"]').classList.toggle('active', document.queryCommandState('bold'));
+    document.querySelector('.rte-btn[data-cmd="italic"]').classList.toggle('active', document.queryCommandState('italic'));
+  } catch (e) { /* queryCommandState can throw before focus exists — ignore */ }
+}
+
 document.querySelectorAll('.rte-btn[data-cmd]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.getElementById('commentInput').focus();
-    document.execCommand(btn.dataset.cmd, false, null);
-    scheduleRender();
-  });
+  btn.addEventListener('click', () => runCommand(btn.dataset.cmd));
 });
-document.getElementById('rteColor').addEventListener('input', e => {
-  document.getElementById('commentInput').focus();
-  document.execCommand('foreColor', false, e.target.value);
-  scheduleRender();
-});
-document.getElementById('rteClear').addEventListener('click', () => {
-  document.execCommand('removeFormat', false, null);
-  scheduleRender();
-});
-document.getElementById('commentInput').addEventListener('input', () => {
-  const text = document.getElementById('commentInput').innerText;
+document.getElementById('rteColor').addEventListener('input', e => runCommand('foreColor', e.target.value));
+document.getElementById('rteClear').addEventListener('click', () => runCommand('removeFormat'));
+
+commentInput.addEventListener('input', () => {
+  const text = commentInput.innerText;
   document.getElementById('commentCount').textContent = Math.min(text.length, 150);
   scheduleRender();
 });
+commentInput.addEventListener('keyup', updateToolbarActiveState);
+commentInput.addEventListener('click', updateToolbarActiveState);
 
 /* ---------- Avatar ---------- */
 function drawAvatarPreviewCss() {
@@ -148,36 +180,45 @@ document.getElementById('username').addEventListener('input', e => {
 });
 bindText('likes', 'likes', v => parseInt(v || '0', 10));
 bindText('timestamp', 'timestamp');
-bindText('bgColor', 'bg');
-bindText('bgColor2', 'bg2');
 bindText('cardColor', 'cardColor');
+bindText('cardColor2', 'cardColor2');
+bindText('cardOpacity', 'cardOpacity', v => parseInt(v, 10));
+bindText('cardGradientAngle', 'cardGradientAngle', v => parseInt(v, 10));
+bindText('cornerRadius', 'cornerRadius', v => parseInt(v, 10));
 bindText('textColor', 'textColor');
 bindText('metaColor', 'metaColor');
 bindText('usernameColor', 'usernameColor');
 bindText('accentColor', 'accentColor');
-bindText('cornerRadius', 'cornerRadius', v => parseInt(v, 10));
-bindText('cardOpacity', 'cardOpacity', v => parseInt(v, 10));
-bindText('gradientAngle', 'gradientAngle', v => parseInt(v, 10));
 bindText('fontFamily', 'fontFamily');
 bindText('fontSize', 'fontSize', v => {
   const n = parseInt(v, 10);
   document.getElementById('fontSizeVal').textContent = n;
   return n;
 });
-document.getElementById('iconSelect').addEventListener('change', e => { state.icon = e.target.value; scheduleRender(); });
 document.getElementById('verifiedToggle').addEventListener('change', e => { state.verified = e.target.checked; scheduleRender(); });
 document.getElementById('replyToggle').addEventListener('change', e => { state.showReply = e.target.checked; scheduleRender(); });
 document.getElementById('authorHeartToggle').addEventListener('change', e => { state.authorHeart = e.target.checked; scheduleRender(); });
-document.getElementById('gradientToggle').addEventListener('change', e => {
-  state.gradient = e.target.checked;
-  document.getElementById('gradientRow').style.display = state.gradient ? 'grid' : 'none';
+document.getElementById('cardGradientToggle').addEventListener('change', e => {
+  state.cardGradient = e.target.checked;
+  document.getElementById('cardGradientRow').style.display = state.cardGradient ? 'grid' : 'none';
   scheduleRender();
 });
 
+/* Card fill swatches: transparent / chroma green / chroma blue / studio black / white */
 document.querySelectorAll('.swatch').forEach(sw => {
   sw.addEventListener('click', () => {
-    state.bg = sw.dataset.bg;
-    if (state.bg !== 'transparent') document.getElementById('bgColor').value = state.bg;
+    if (sw.dataset.fill === 'transparent') {
+      state.cardOpacity = 0;
+      document.getElementById('cardOpacity').value = 0;
+    } else {
+      state.cardColor = sw.dataset.fill;
+      state.cardOpacity = 100;
+      state.cardGradient = false;
+      document.getElementById('cardColor').value = sw.dataset.fill;
+      document.getElementById('cardOpacity').value = 100;
+      document.getElementById('cardGradientToggle').checked = false;
+      document.getElementById('cardGradientRow').style.display = 'none';
+    }
     scheduleRender();
   });
 });
@@ -197,16 +238,8 @@ function roundRectPath(x, y, w, h, r) {
   ctx.closePath();
 }
 
-function hexToRgba(hex, alpha) {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
 /* Wrap styled runs into lines of {text, bold, italic, color, width} tokens */
-function wrapRuns(runs, maxWidth, baseFont, baseSize, fontFamily) {
+function wrapRuns(runs, maxWidth, baseSize, fontFamily) {
   const lines = [[]];
   let curWidth = 0;
 
@@ -234,18 +267,23 @@ function wrapRuns(runs, maxWidth, baseFont, baseSize, fontFamily) {
 }
 
 function drawWrappedLines(lines, x, y, lineHeight, defaultColor) {
+  ctx.textBaseline = 'top';
   lines.forEach((line, i) => {
     let cx = x;
     const ly = y + i * lineHeight;
     line.forEach(tok => {
       ctx.font = `${tok.italic ? 'italic ' : ''}${tok.bold ? '700' : '400'} ${state.fontSize}px ${state.fontFamily}`;
       ctx.fillStyle = tok.color || defaultColor;
-      ctx.textBaseline = 'top';
       ctx.fillText(tok.text, cx, ly);
       cx += tok.width;
     });
   });
-  return lines.length * lineHeight;
+}
+
+function formatLikes(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
 }
 
 /* ---------- Main render ---------- */
@@ -261,45 +299,36 @@ function render() {
   const contentX = CARD_PAD + AVATAR_R * 2 + GAP;
   const maxTextWidth = W - CARD_PAD * 2 - PAD * 2 - AVATAR_R * 2 - GAP;
 
-  // measure username line width (icon + username + verified)
-  ctx.font = `700 26px ${state.fontFamily}`;
-  const iconStr = ICONS[state.icon] ? ICONS[state.icon] + ' ' : '';
   const commentLineHeight = Math.round(state.fontSize * 1.34);
-
-  const lines = wrapRuns(state.commentRuns, maxTextWidth, null, state.fontSize, state.fontFamily);
+  const lines = wrapRuns(state.commentRuns, maxTextWidth, state.fontSize, state.fontFamily);
   const textBlockHeight = Math.max(commentLineHeight, lines.length * commentLineHeight);
 
-  const cardHeight = CARD_PAD /*top*/ + AVATAR_R * 2 + 22 /*gap*/ + textBlockHeight + 22 /*gap*/ + 30 /*meta row*/ + CARD_PAD /*bottom*/;
+  const cardHeight = CARD_PAD + AVATAR_R * 2 + 22 + textBlockHeight + 22 + 30 + CARD_PAD;
   const H = cardHeight + PAD * 2;
   canvas.height = Math.max(H, 320);
   canvas.width = W;
 
-  // ----- Background -----
+  // Canvas background is always fully transparent — only clear it.
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (state.bg !== 'transparent') {
-    if (state.gradient) {
-      const rad = state.gradientAngle * Math.PI / 180;
-      const x1 = canvas.width/2 - Math.cos(rad)*canvas.width/2;
-      const y1 = canvas.height/2 - Math.sin(rad)*canvas.height/2;
-      const x2 = canvas.width/2 + Math.cos(rad)*canvas.width/2;
-      const y2 = canvas.height/2 + Math.sin(rad)*canvas.height/2;
-      const g = ctx.createLinearGradient(x1, y1, x2, y2);
-      g.addColorStop(0, state.bg);
-      g.addColorStop(1, state.bg2);
-      ctx.fillStyle = g;
-    } else {
-      ctx.fillStyle = state.bg;
-    }
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
 
-  // ----- Card -----
+  // ----- Card fill -----
   const cardX = PAD, cardY = PAD, cardW = canvas.width - PAD * 2, cardH = canvas.height - PAD * 2;
   if (state.cardOpacity > 0) {
     ctx.save();
     ctx.globalAlpha = state.cardOpacity / 100;
     roundRectPath(cardX, cardY, cardW, cardH, state.cornerRadius);
-    ctx.fillStyle = state.cardColor;
+    if (state.cardGradient) {
+      const rad = state.cardGradientAngle * Math.PI / 180;
+      const cx = cardX + cardW / 2, cy = cardY + cardH / 2;
+      const x1 = cx - Math.cos(rad) * cardW / 2, y1 = cy - Math.sin(rad) * cardH / 2;
+      const x2 = cx + Math.cos(rad) * cardW / 2, y2 = cy + Math.sin(rad) * cardH / 2;
+      const g = ctx.createLinearGradient(x1, y1, x2, y2);
+      g.addColorStop(0, state.cardColor);
+      g.addColorStop(1, state.cardColor2);
+      ctx.fillStyle = g;
+    } else {
+      ctx.fillStyle = state.cardColor;
+    }
     ctx.fill();
     ctx.restore();
   }
@@ -332,7 +361,7 @@ function render() {
   ctx.fillStyle = state.usernameColor;
   ctx.textBaseline = 'middle';
   ctx.fillText(state.username, textX, avY);
-  let usernameW = ctx.measureText(state.username).width;
+  const usernameW = ctx.measureText(state.username).width;
 
   if (state.verified) {
     const bx = textX + usernameW + 10;
@@ -351,55 +380,28 @@ function render() {
   }
 
   // ----- Comment body -----
-  ctx.textBaseline = 'top';
-  let curY = avY + AVATAR_R + 22;
-  let bodyX = textX;
-  if (iconStr) {
-    ctx.font = `${state.fontSize}px ${state.fontFamily}`;
-    ctx.fillText(iconStr, bodyX, curY);
-    bodyX += ctx.measureText(iconStr).width;
-  }
-  // icon only offsets the first line; every other line starts at textX
-  drawCommentWithIconOffset(lines, textX, bodyX - textX, curY, commentLineHeight);
+  const commentY = avY + AVATAR_R + 22;
+  drawWrappedLines(lines, textX, commentY, commentLineHeight, state.textColor);
 
-  curY += textBlockHeight + 22;
+  const metaY = commentY + textBlockHeight + 22;
 
   // ----- Meta row: timestamp · likes · reply -----
+  ctx.textBaseline = 'top';
   ctx.font = `500 21px ${state.fontFamily}`;
   ctx.fillStyle = state.metaColor;
   let metaX = textX;
   const metaParts = [state.timestamp, `${formatLikes(state.likes)} likes`];
   if (state.showReply) metaParts.push('Reply');
-  metaParts.forEach((part, i) => {
-    ctx.fillText(part, metaX, curY);
+  metaParts.forEach(part => {
+    ctx.fillText(part, metaX, metaY);
     metaX += ctx.measureText(part).width + 28;
   });
 
   if (state.authorHeart) {
     ctx.font = '20px sans-serif';
     ctx.fillStyle = state.accentColor;
-    ctx.fillText('❤', cardX + cardW - CARD_PAD - 24, curY - 2);
+    ctx.fillText('❤', cardX + cardW - CARD_PAD - 24, metaY - 2);
   }
-}
-
-function drawCommentWithIconOffset(lines, x, iconOffset, y, lineHeight) {
-  lines.forEach((line, i) => {
-    let cx = x + (i === 0 ? iconOffset : 0);
-    const ly = y + i * lineHeight;
-    line.forEach(tok => {
-      ctx.font = `${tok.italic ? 'italic ' : ''}${tok.bold ? '700' : '400'} ${state.fontSize}px ${state.fontFamily}`;
-      ctx.fillStyle = tok.color || state.textColor;
-      ctx.textBaseline = 'top';
-      ctx.fillText(tok.text, cx, ly);
-      cx += tok.width;
-    });
-  });
-}
-
-function formatLikes(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return String(n);
 }
 
 let renderScheduled = false;
@@ -420,5 +422,5 @@ document.getElementById('downloadBtn').addEventListener('click', () => {
 
 /* ---------- Init ---------- */
 drawAvatarPreviewCss();
-document.getElementById('commentInput').dispatchEvent(new Event('input'));
+commentInput.dispatchEvent(new Event('input'));
 scheduleRender();
