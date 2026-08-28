@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comment Bay — IG Comment Sticker Generator</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">◉ REC</span>
+    <h1>Comment Bay</h1>
+  </div>
+  <span class="tagline">Instagram comment sticker studio</span>
+</header>
+
+<main class="workspace">
+
+  <!-- LIVE MONITOR / PREVIEW -->
+  <section class="monitor-bay">
+    <div class="monitor-label">
+      <span class="dot"></span> LIVE PREVIEW
+    </div>
+    <div class="monitor-frame" id="monitorFrame">
+      <canvas id="canvas" width="1080" height="640"></canvas>
+    </div>
+    <div class="monitor-actions">
+      <button id="resetBtn" class="btn btn-ghost">Reset</button>
+      <button id="downloadBtn" class="btn btn-primary">↓ Download PNG</button>
+    </div>
+  </section>
+
+  <!-- CONTROL DECK -->
+  <section class="control-deck">
+
+    <div class="panel">
+      <h2 class="panel-title">01 — Identity</h2>
+
+      <div class="field">
+        <label>Avatar</label>
+        <div class="avatar-row">
+          <div class="avatar-preview" id="avatarPreview"></div>
+          <input type="file" id="avatarUpload" accept="image/*" hidden>
+          <button class="btn btn-small" id="avatarUploadBtn">Upload</button>
+          <button class="btn btn-small" id="avatarRandomBtn">Randomize</button>
+          <button class="btn btn-small btn-danger" id="avatarRemoveBtn">Remove</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="username">Username</label>
+        <input type="text" id="username" maxlength="30" value="builtbyherself.co">
+        <span class="counter"><span id="usernameCount">17</span>/30</span>
+      </div>
+
+      <div class="field field-row">
+        <label class="checkbox">
+          <input type="checkbox" id="verifiedToggle">
+          Verified badge
+        </label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">02 — Comment</h2>
+
+      <div class="rte-toolbar">
+        <button type="button" class="rte-btn" data-cmd="bold"><b>B</b></button>
+        <button type="button" class="rte-btn" data-cmd="italic"><i>I</i></button>
+        <input type="color" id="rteColor" class="rte-color" value="#1c1c1c" title="Text color">
+        <button type="button" class="rte-btn" id="rteClear">Clear style</button>
+      </div>
+      <div id="commentInput" class="rte-input" contenteditable="true" data-placeholder="Type your comment…">Read this twice before you judge her.</div>
+      <span class="counter"><span id="commentCount">0</span>/150</span>
+
+      <div class="field">
+        <label for="iconSelect">Leading icon</label>
+        <select id="iconSelect">
+          <option value="none">None</option>
+          <option value="megaphone" selected>🗣️ Megaphone</option>
+          <option value="fire">🔥 Fire</option>
+          <option value="heart">❤️ Heart</option>
+          <option value="star">⭐ Star</option>
+          <option value="eyes">👀 Eyes</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">03 — Engagement</h2>
+      <div class="field field-row-2">
+        <div>
+          <label for="likes">Likes</label>
+          <input type="number" id="likes" min="0" value="500">
+        </div>
+        <div>
+          <label for="timestamp">Timestamp</label>
+          <input type="text" id="timestamp" maxlength="10" value="2h">
+        </div>
+      </div>
+      <div class="field">
+        <label class="checkbox">
+          <input type="checkbox" id="replyToggle" checked>
+          Show "Reply"
+        </label>
+      </div>
+      <div class="field">
+        <label class="checkbox">
+          <input type="checkbox" id="authorHeartToggle">
+          Author heart (❤ from creator)
+        </label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">04 — Background &amp; Chroma Key</h2>
+      <div class="swatch-row">
+        <button class="swatch swatch-transparent" data-bg="transparent" title="Transparent (export)"></button>
+        <button class="swatch" style="background:#00FF00" data-bg="#00FF00" title="Chroma Green"></button>
+        <button class="swatch" style="background:#0047FF" data-bg="#0047FF" title="Chroma Blue"></button>
+        <button class="swatch" style="background:#0d0d0d" data-bg="#0d0d0d" title="Studio Black"></button>
+        <button class="swatch" style="background:#ffffff" data-bg="#ffffff" title="White"></button>
+      </div>
+      <div class="field field-row-2">
+        <div>
+          <label for="bgColor">Custom color</label>
+          <input type="color" id="bgColor" value="#0d0d0d">
+        </div>
+        <div>
+          <label class="checkbox">
+            <input type="checkbox" id="gradientToggle">
+            Gradient
+          </label>
+        </div>
+      </div>
+      <div class="field field-row-2" id="gradientRow" style="display:none">
+        <div>
+          <label for="bgColor2">Gradient color 2</label>
+          <input type="color" id="bgColor2" value="#7a2ff0">
+        </div>
+        <div>
+          <label for="gradientAngle">Angle</label>
+          <input type="range" id="gradientAngle" min="0" max="360" value="45">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel-title">05 — Card Style</h2>
+      <div class="field field-row-2">
+        <div>
+          <label for="cardColor">Card fill</label>
+          <input type="color" id="cardColor" value="#000000">
+        </div>
+        <div>
+          <label for="cardOpacity">Card opacity</label>
+          <input type="range" id="cardOpacity" min="0" max="100" value="100">
+        </div>
+      </div>
+      <div class="field field-row-2">
+        <div>
+          <label for="textColor">Text color</label>
+          <input type="color" id="textColor" value="#ffffff">
+        </div>
+        <div>
+          <label for="metaColor">Meta text color</label>
+          <input type="color" id="metaColor" value="#9a9a9a">
+        </div>
+      </div>
+      <div class="field field-row-2">
+        <div>
+          <label for="usernameColor">Username color</label>
+          <input type="color" id="usernameColor" value="#ffffff">
+        </div>
+        <div>
+          <label for="accentColor">Accent / badge color</label>
+          <input type="color" id="accentColor" value="#3897f0">
+        </div>
+      </div>
+      <div class="field field-row-2">
+        <div>
+          <label for="cornerRadius">Corner radius</label>
+          <input type="range" id="cornerRadius" min="0" max="60" value="28">
+        </div>
+        <div>
+          <label for="fontFamily">Font</label>
+          <select id="fontFamily">
+            <option value="'Helvetica Neue', Arial, sans-serif" selected>System Sans</option>
+            <option value="Georgia, serif">Serif</option>
+            <option value="'Courier New', monospace">Mono</option>
+            <option value="'Comic Sans MS', cursive">Casual</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="fontSize">Comment font size: <span id="fontSizeVal">30</span>px</label>
+        <input type="range" id="fontSize" min="18" max="48" value="30">
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<footer class="footer-note">Everything renders locally in your browser — nothing is uploaded anywhere.</footer>
+
+<script src="app.js"></script>
+</body>
+  </html>
+  
